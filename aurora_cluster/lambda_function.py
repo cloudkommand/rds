@@ -96,6 +96,7 @@ def lambda_handler(event, context):\
 
         enable_global_write_forwarding = cdef.get("enable_global_write_forwarding", False)
 
+
         storage_type = cdef.get("storage_type", "aurora")
         if storage_type not in ["aurora", "aurora-iopt1"]:
             eh.perm_error("Invalid Storage Type", 0)
@@ -135,7 +136,7 @@ def lambda_handler(event, context):\
             "PreferredBackupWindow": preferred_backup_window,
             "PreferredMaintenanceWindow": preferred_maintenance_window,
             "ReplicationSourceIdentifier": replicate_source_arn,
-            "Tags": tags,
+            "Tags": format_tags(tags),
             "StorageEncrypted": storage_encrypted,
             "KmsKeyId": kms_key_id,
             "PreSignedUrl": pre_signed_url,
@@ -173,6 +174,9 @@ def lambda_handler(event, context):\
         create_cluster(initial_attributes, region)
         update_cluster(prev_state, initial_attributes, region, apply_changes_immediately)
         delete_cluster(prev_state)
+
+        add_tags()
+        remove_tags()
             
         return eh.finish()
 
@@ -265,7 +269,23 @@ def get_cluster(prev_state, attributes, region):
         eh.add_log("Got Cluster", cluster_retval)
 
         for attrib_key, attrib_value in attributes.items():
+            if attrib_key == "Tags":
+                current_tags_dict = {tag.get("Key"): tag.get("Value") for tag in cluster_retval.get(attrib_key)}
+                desired_tags_dict = {tag.get("Key"): tag.get("Value") for tag in attrib_value}
+                if current_tags_dict != desired_tags_dict:
+                    eh.add_log("Tags Don't Match", {"current_tags": current_tags_dict, "desired_tags": desired_tags_dict})
+                    update_tags = {k:v for k,v in desired_tags_dict.items() if ((k not in current_tags_dict) or (v != current_tags_dict.get(k)))}
+                    remove_tags = [k for k in current_tags_dict if k not in desired_tags_dict]
+                    if update_tags:
+                        eh.add_op("add_tags", update_tags)
+                    if remove_tags:
+                        eh.add_op("remove_tags", remove_tags)
+
             if attrib_value != cluster_retval.get(attrib_key):
+                if attrib_key in ["DBSubnetGroupName", "Engine"]:
+                    eh.add_log(f"Cannot Change Subnets or Engine", {"attributes": attributes, "cluster_retval": cluster_retval})
+                    eh.perm_error(f"Cannot Change Subnets or Engine", 2)
+                    return None
                 print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
                 eh.add_log("Cluster Attributes Don't Match", {"attrib_key": attrib_key, "attrib_value": attrib_value, "cluster_attrib_value": cluster_retval.get(attrib_key)})
                 eh.add_op("update_cluster")
@@ -340,6 +360,30 @@ def delete_cluster(prev_state):
             eh.add_log("Cluster Not Found, Exiting", {"name": prev_state.get("props", {}).get("name")})
         else:
             handle_common_errors(e, eh, "Delete Cluster Failed", 15)
+
+@ext(handler=eh, op="add_tags")
+def add_tags():
+    tags_to_add = format_tags(eh.ops["add_tags"])
+    try:
+        rds.add_tags_to_resource(
+            ResourceName=eh.props.get("arn"),
+            Tags=tags_to_add
+        )
+        eh.add_log("Added Tags", {"tags": tags_to_add})
+    except ClientError as e:
+        handle_common_errors(e, eh, "Add Tags Failed", 90)
+
+@ext(handler=eh, op="remove_tags")
+def remove_tags():
+    tags_to_remove = eh.ops["remove_tags"]
+    try:
+        rds.remove_tags_from_resource(
+            ResourceName=eh.props.get("arn"),
+            TagKeys=tags_to_remove
+        )
+        eh.add_log("Removed Tags", {"tags": tags_to_remove})
+    except ClientError as e:
+        handle_common_errors(e, eh, "Remove Tags Failed", 94)
 
 
 
@@ -423,3 +467,6 @@ def get_default_logs_exports(engine):
         return ["postgresql"]
     else:
         raise Exception(f"Invalid Engine: {engine}")
+
+def format_tags(tags_dict):
+    return [{"Key": k, "Value": v} for k,v in tags_dict.items()]
