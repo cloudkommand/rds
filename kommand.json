@@ -35,121 +35,47 @@
             "input": {
                 "type": "object",
                 "properties": {
-                    "domain": {
-                        "type": "string",
-                        "description": "The domain (e.g. example.com, www.xbf.example.com) that this record is routing from",
-                        "common": true
-                    },
-                    "base_domain": {
-                        "type": "string",
-                        "description": "Pass a base domain to get a unique domain through a generated subdomain. Set this value if you want multiple developers working on the same app to get a unique domain per CloudKommand project.",
-                        "common": true
-                    },
-                    "record_type": {
-                        "type": "string",
-                        "description": "The type of Route53 record to deploy",
-                        "default": "A",
-                        "enum": ["SOA", "A", "TXT", "NS", "CNAME", "MX", "NAPTR", "PTR", "SRV", "SPF", "AAAA", "CAA", "DS"],
-                        "common": true
-                    },
-                    "route53_hosted_zone_id": {
-                        "type": "string",
-                        "description": "The ID of the hosted zone to create the record in. If not passed, the extension will attempt to find the zone based on the domain passed",
-                        "common": true
-                    },
-                    "identifier": {
-                        "type": "string",
-                        "description": "Only pass this if you have multiple record sets that point to the same location and have the same type. If that is true, this value must be unique for each of those records"
-                    },
-                    "weight": {
-                        "type": "integer",
-                        "description": "Only necessary for record sets with a weighted routing policy. See https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html#routing-policy-weighted for details"
-                    },
-                    "region": {
-                        "type": "string",
-                        "description": "Only used for latency-based record sets. See https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html#routing-policy-latency for details"
-                    },
-                    "continent": {
-                        "type": "string",
-                        "enum": ["AF", "AN", "AS", "EU", "OC", "NA", "SA"],
-                        "description": "Use to route all queries from a continent to a particular endpoint"
-                    },
-                    "country": {
-                        "type": "string",
-                        "description": "Use to route all queries from a country to a particular endpoint"
-                    },
-                    "state": {
-                        "type": "string",
-                        "description": "Used to route traffic on a US state-by-state basis. If using this parameter, country will be automatically set to \"US\""
-                    },
-                    "failover": {
-                        "type": "string",
-                        "enum": ["PRIMARY", "SECONDARY"],
-                        "description": "Used to route calls to a secondary endpoint if the primary endpoint fails its health check. Both records must have failover present"
-                    },
-                    "multivalue_answer": {
-                        "type": "boolean",
-                        "default": false,
-                        "description": "See https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html#routing-policy-multivalue for details"
-                    },
-                    "ttl": {
-                        "type": "integer",
-                        "description": "The resource record cache time to live, in seconds. Not useable with Alias records (type 'A')"
-                    },
-                    "resource_records": {
+                    "subnet_ids": {
                         "type": "array",
+                        "description": "The subnet IDs to create the cluster in.",
                         "items": {
-                            "type": "object",
-                            "properties": {
-                                "Value": {
-                                    "type": "string",
-                                    "description": "The current or new DNS record value. Current in the case of a DELETE op."
-                                }
-                            },
-                            "required": ["Value"]
+                            "type": "string"
                         }
                     },
-                    "target_s3_region": {
-                        "type": "string",
-                        "description": "The region that the bucket to route traffic to was created in. Defaults to the region the lambda is deployed in",
-                        "common": true
+                    "security_group_ids": {
+                        "type": "array",
+                        "description": "The security group IDs to create the cluster in.",
+                        "items": {
+                            "type": "string"
+                        }
                     },
-                    "target_s3_bucket": {
+                    "engine": {
                         "type": "string",
-                        "description": "The name of both the bucket to point to and the domain. Used to let the extension know to point to S3",
-                        "common": true
+                        "description": "The database engine to use for the cluster.",
+                        "enum": [
+                            "aurora-mysql",
+                            "aurora-postgresql"
+                        ]
                     },
-                    "target_cloudfront_domain_name": {
+                    "master_password": {
                         "type": "string",
-                        "description": "The domain name Cloudfront assigned when you created the distribution that this record is going to point to",
-                        "common": true
+                        "description": "The master password for the cluster."
                     },
-                    "target_api_hosted_zone_id": {
+                    "master_username": {
                         "type": "string",
-                        "description": "The hosted zone ID for the API this record is pointing to",
-                        "common": true
+                        "description": "The master username for the cluster."
                     },
-                    "target_api_domain_name": {
-                        "type": "string",
-                        "description": "The domain name for the API this record is pointing to",
-                        "common": true
-                    },
-                    "target_hosted_zone_id": {
-                        "type": "string",
-                        "description": "The hosted zone ID for the target. Refer to https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/route53/client/change_resource_record_sets.html if you are not using an API Gateway, Cloudfront, or S3",
-                        "common": true
-                    },
-                    "target_dns_name": {
-                        "type": "string",
-                        "description": "The DNS name for the target. Refer to https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/route53/client/change_resource_record_sets.html if you are not using an API Gateway, Cloudfront, or S3",
-                        "common": true
-                    },
-                    "evaluate_target_health": {
+                    "manage_master_user_password": {
                         "type": "boolean",
-                        "description": "When set to true, this alias record set inherits the health of the referenced AWS resource",
+                        "description": "Whether you want RDS to manage the master user password for you in Secrets Manager. This disables a few capabilities, and defaults to false.",
                         "default": false
                     }
-                }
+                },
+                "required": [
+                    "subnet_ids",
+                    "security_group_ids",
+                    "engine"
+                ]
             },
             "props": {
                 "domain": {
