@@ -57,6 +57,10 @@
                             "aurora-postgresql"
                         ]
                     },
+                    "engine_version": {
+                        "type": "string",
+                        "description": "The database engine version to use for the cluster. Defaults to the latest version for the engine you choose. If you leave this parameter unset, every time you redeploy the cluster it will update to the latest version during the set maintenance window."
+                    },
                     "master_password": {
                         "type": "string",
                         "description": "The master password for the cluster."

@@ -37,7 +37,6 @@ def lambda_handler(event, context):\
         # availability_zones = cdef.get("availability_zones") or event.get("aws_info", {}).get("region_availability_zones") or ["us-east-1a", "us-east-1b", "us-east-1c"]
         backup_retention_period = cdef.get("backup_retention_period") or 7
         character_set_name = cdef.get("character_set_name") #We do not recommend you set this parameter
-        database_name = cdef.get("database_name") or "ck_default"
         
         security_group_ids = cdef.get("security_group_ids")
         subnet_ids = cdef.get("subnet_ids")
@@ -51,6 +50,8 @@ def lambda_handler(event, context):\
             eh.perm_error("Invalid Engine", 0)
             eh.add_log("Error, Invalid Engine", {"engine": engine}, True)
             return eh.finish()
+
+        database_name = cdef.get("database_name") or get_default_database_name(engine)
 
         engine_version = cdef.get("engine_version")
         if engine_version and not eh.state.get("engine_version"):
@@ -479,6 +480,14 @@ def get_default_logs_exports(engine):
         return ["audit", "error", "general", "slowquery"]
     elif engine == "aurora-postgresql":
         return ["postgresql"]
+    else:
+        raise Exception(f"Invalid Engine: {engine}")
+
+def get_default_database_name(engine):
+    if engine == "aurora-mysql":
+        return "default"
+    elif engine == "aurora-postgresql":
+        return "postgres"
     else:
         raise Exception(f"Invalid Engine: {engine}")
 
