@@ -346,7 +346,7 @@ def update_cluster(prev_state, attributes, region, apply_immediately):
                 "CloudwatchLogsExportConfiguration", "EngineVersion", "AllowMajorVersionUpgrade", "DBInstanceParameterGroupName", "Domain", "DomainIAMRoleName", "ScalingConfiguration", 
                 "DeletionProtection", "EnableHttpEndpoint", "CopyTagsToSnapshot", "EnableGlobalWriteForwarding", "DBClusterInstanceClass", "AllocatedStorage", "StorageType", "Iops", 
                 "AutoMinorVersionUpgrade", "MonitoringInterval", "MonitoringRoleArn", "EnablePerformanceInsights", "PerformanceInsightsKMSKeyId", "PerformanceInsightsRetentionPeriod", 
-                "ServerlessV2ScalingConfiguration", "NetworkType", "ManageMasterUserPassword", "RotateMasterUserPassword", "MasterUserSecretKmsKeyId", "EngineMode", "AllowEngineModeChange", 
+                "ServerlessV2ScalingConfiguration", "NetworkType", "ManageMasterUserPassword", "RotateMasterUserPassword", "MasterUserSecretKmsKeyId", "AllowEngineModeChange", 
                 "EnableLocalWriteForwarding", "AwsBackupRecoveryPointArn"]
             }
         ).get("DBCluster")
