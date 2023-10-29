@@ -94,7 +94,7 @@ def lambda_handler(event, context):\
         activty_directory_id = cdef.get("activty_directory_id")
         activty_directory_role_name = cdef.get("activty_directory_role_name")
 
-        enable_global_write_forwarding = cdef.get("enable_global_write_forwarding")
+        enable_global_write_forwarding = cdef.get("enable_global_write_forwarding", False if global_cluster_identifier else None)
 
 
         storage_type = cdef.get("storage_type", "aurora")
@@ -319,7 +319,7 @@ def create_cluster(attributes, region):
         update_props_and_links(eh, region, cluster_retval)
 
     except ClientError as e:
-        handle_common_errors(e, eh, "Create Cluster Failed", 15, ["InvalidParameterCombination"])
+        handle_common_errors(e, eh, "Create Cluster Failed", 15, ["InvalidParameterCombination", "InvalidParameterValue"])
     except botocore.exceptions.ParamValidationError as e:
         eh.add_log("Invalid Create Cluster Parameters", {"error": str(e), "attributes": attributes}, True)
         eh.perm_error(str(e), 15)

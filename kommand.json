@@ -69,6 +69,15 @@
                         "type": "boolean",
                         "description": "Whether you want RDS to manage the master user password for you in Secrets Manager. This disables a few capabilities, and defaults to false.",
                         "default": false
+                    },
+                    "global_cluster_identifier": {
+                        "type": "string",
+                        "description": "The global cluster identifier to associate this cluster with. This is only used for clusters that are part of an Aurora global database, and must be specified if you want one"
+                    },
+                    "enable_global_write_forwarding": {
+                        "type": "boolean",
+                        "description": "Whether you want to enable this cluster to forward writes to the primary cluster of an Aurora global database. Defaults to false if global_cluster_identifier is specified.",
+                        "default": false
                     }
                 },
                 "required": [
