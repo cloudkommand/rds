@@ -193,9 +193,10 @@ def get_subnet_group(subnet_ids):
     marker = None
     while first or marker:
         first = False
-        subnet_group_retval = rds.describe_db_subnet_groups(
-            Marker=marker
-        )
+        params = remove_none_attributes({
+            "Marker": marker
+        })
+        subnet_group_retval = rds.describe_db_subnet_groups(**params)
         marker = subnet_group_retval.get("Marker")
         subnet_groups = subnet_group_retval.get("DBSubnetGroups")
         for subnet_group in subnet_groups:
