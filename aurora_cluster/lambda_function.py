@@ -97,6 +97,7 @@ def lambda_handler(event, context):\
 
         enable_global_write_forwarding = cdef.get("enable_global_write_forwarding", False if global_cluster_identifier else None)
         force_master_password_update = cdef.get("force_master_password_update", False)
+        skip_final_snapshot = cdef.get("skip_final_snapshot", False)
 
         storage_type = cdef.get("storage_type", "aurora")
         if storage_type not in ["aurora", "aurora-iopt1"]:
@@ -176,7 +177,7 @@ def lambda_handler(event, context):\
         get_cluster(prev_state, initial_attributes, region, force_master_password_update)
         create_cluster(initial_attributes, region)
         update_cluster(prev_state, initial_attributes, region, apply_changes_immediately)
-        delete_cluster(prev_state)
+        delete_cluster(prev_state, skip_final_snapshot)
 
         add_tags()
         remove_tags()
@@ -381,11 +382,11 @@ def update_cluster(prev_state, attributes, region, apply_immediately):
         eh.perm_error(str(e), 15)
 
 @ext(handler=eh, op="delete_cluster")
-def delete_cluster(prev_state):
+def delete_cluster(prev_state, skip_final_snapshot):
     try:
         cluster_retval = rds.delete_db_cluster(
             DBClusterIdentifier=prev_state.get("props", {}).get("name"),
-            SkipFinalSnapshot=True
+            SkipFinalSnapshot=skip_final_snapshot
         ).get("DBCluster")
 
         eh.add_log("Deleted Cluster", cluster_retval)
