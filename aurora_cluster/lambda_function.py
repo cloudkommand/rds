@@ -103,7 +103,7 @@ def lambda_handler(event, context):\
             eh.add_log("Error, Invalid Storage Type", {"storage_type": storage_type}, True)
             return eh.finish()
 
-        enable_local_write_forwarding = cdef.get("enable_local_write_forwarding", False)
+        # enable_local_write_forwarding = cdef.get("enable_local_write_forwarding", False)
 
         apply_changes_immediately = cdef.get("apply_changes_immediately", False)
 
@@ -154,7 +154,7 @@ def lambda_handler(event, context):\
             "StorageType": storage_type,
             "ManageMasterUserPassword": manage_master_user_password,
             "MasterUserSecretKmsKeyId": master_user_secret_kms_key_id,
-            "EnableLocalWriteForwarding": enable_local_write_forwarding
+            # "EnableLocalWriteForwarding": enable_local_write_forwarding
         })
 
         get_subnet_group(subnet_ids)
@@ -189,28 +189,31 @@ def lambda_handler(event, context):\
 
 @ext(handler=eh, op="get_subnet_group")
 def get_subnet_group(subnet_ids):
-    first = True
-    marker = None
-    while first or marker:
-        first = False
-        params = remove_none_attributes({
-            "Marker": marker
-        })
-        subnet_group_retval = rds.describe_db_subnet_groups(**params)
-        marker = subnet_group_retval.get("Marker")
-        subnet_groups = subnet_group_retval.get("DBSubnetGroups")
-        for subnet_group in subnet_groups:
-            group_subnet_ids = [subnet.get("SubnetIdentifier") for subnet in subnet_group.get("Subnets")]
-            if set(group_subnet_ids) == set(subnet_ids):
-                eh.add_log("Found Matching Subnet Group", subnet_group)
-                eh.add_props({
-                    "subnet_group_arn": subnet_group.get("DBSubnetGroupArn"),
-                    "subnet_group_name": subnet_group.get("DBSubnetGroupName")
-                })
-                return None
-    
-    # If we get here, we need to create a new subnet group
-    eh.add_op("create_subnet_group", {"subnet_ids": subnet_ids})
+    try:
+        first = True
+        marker = None
+        while first or marker:
+            first = False
+            params = remove_none_attributes({
+                "Marker": marker
+            })
+            subnet_group_retval = rds.describe_db_subnet_groups(**params)
+            marker = subnet_group_retval.get("Marker")
+            subnet_groups = subnet_group_retval.get("DBSubnetGroups")
+            for subnet_group in subnet_groups:
+                group_subnet_ids = [subnet.get("SubnetIdentifier") for subnet in subnet_group.get("Subnets")]
+                if set(group_subnet_ids) == set(subnet_ids):
+                    eh.add_log("Found Matching Subnet Group", subnet_group)
+                    eh.add_props({
+                        "subnet_group_arn": subnet_group.get("DBSubnetGroupArn"),
+                        "subnet_group_name": subnet_group.get("DBSubnetGroupName")
+                    })
+                    return None
+        
+        # If we get here, we need to create a new subnet group
+        eh.add_op("create_subnet_group", {"subnet_ids": subnet_ids})
+    except ClientError as e:
+        handle_common_errors(e, eh, "Get Subnet Group Failed", 0)
 
 @ext(handler=eh, op="create_subnet_group")
 def create_subnet_group(name):
