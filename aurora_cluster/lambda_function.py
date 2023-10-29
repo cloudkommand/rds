@@ -37,7 +37,7 @@ def lambda_handler(event, context):\
         # availability_zones = cdef.get("availability_zones") or event.get("aws_info", {}).get("region_availability_zones") or ["us-east-1a", "us-east-1b", "us-east-1c"]
         backup_retention_period = cdef.get("backup_retention_period") or 7
         character_set_name = cdef.get("character_set_name") #We do not recommend you set this parameter
-        database_name = cdef.get("database_name") or "created_default"
+        database_name = cdef.get("database_name") or "ck_default"
         
         security_group_ids = cdef.get("security_group_ids")
         subnet_ids = cdef.get("subnet_ids")
@@ -61,7 +61,7 @@ def lambda_handler(event, context):\
         #     eh.add_state({"parameter_group_name": parameter_group_name})
 
         port = cdef.get("port") or get_default_port(engine)
-        master_username = cdef.get("master_username") or "admin"
+        master_username = cdef.get("master_username") or "administrator"
         master_password = cdef.get("master_password")
         manage_master_user_password = cdef.get("manage_master_user_password") or False
         master_user_secret_kms_key_id = cdef.get("master_user_secret_kms_key_id")

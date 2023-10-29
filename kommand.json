@@ -63,7 +63,8 @@
                     },
                     "master_username": {
                         "type": "string",
-                        "description": "The master username for the cluster."
+                        "description": "The master username for the cluster.",
+                        "default": "administrator"
                     },
                     "manage_master_user_password": {
                         "type": "boolean",
