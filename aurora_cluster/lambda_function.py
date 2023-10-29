@@ -70,7 +70,7 @@ def lambda_handler(event, context):\
             eh.add_log("Error, master_password Required", {"definition": cdef}, True)
             return eh.finish()
 
-        option_group_name = cdef.get("option_group_name")
+        # option_group_name = cdef.get("option_group_name")
         preferred_backup_window = cdef.get("preferred_backup_window") or "05:12-05:42"
         preferred_maintenance_window = cdef.get("preferred_maintenance_window") or "mon:06:09-mon:06:39"
 
@@ -94,7 +94,7 @@ def lambda_handler(event, context):\
         activty_directory_id = cdef.get("activty_directory_id")
         activty_directory_role_name = cdef.get("activty_directory_role_name")
 
-        enable_global_write_forwarding = cdef.get("enable_global_write_forwarding", False)
+        enable_global_write_forwarding = cdef.get("enable_global_write_forwarding")
 
 
         storage_type = cdef.get("storage_type", "aurora")
@@ -132,7 +132,7 @@ def lambda_handler(event, context):\
             "Port": port,
             "MasterUsername": master_username,
             "MasterUserPassword": master_password,
-            "OptionGroupName": option_group_name,
+            # "OptionGroupName": option_group_name,
             "PreferredBackupWindow": preferred_backup_window,
             "PreferredMaintenanceWindow": preferred_maintenance_window,
             "ReplicationSourceIdentifier": replicate_source_arn,
@@ -319,7 +319,7 @@ def create_cluster(attributes, region):
         update_props_and_links(eh, region, cluster_retval)
 
     except ClientError as e:
-        handle_common_errors(e, eh, "Create Cluster Failed", 15)
+        handle_common_errors(e, eh, "Create Cluster Failed", 15, ["InvalidParameterCombination"])
     except botocore.exceptions.ParamValidationError as e:
         eh.add_log("Invalid Create Cluster Parameters", {"error": str(e), "attributes": attributes}, True)
         eh.perm_error(str(e), 15)
