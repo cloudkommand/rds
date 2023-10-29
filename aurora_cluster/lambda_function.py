@@ -34,7 +34,7 @@ def lambda_handler(event, context):\
         
         name = cdef.get("name") or component_safe_name(project_code, repo_id, cname, no_underscores=True, max_chars=63)
         
-        availability_zones = cdef.get("availability_zones") or event.get("aws_info", {}).get("region_availability_zones") or ["us-east-1a", "us-east-1b", "us-east-1c"]
+        # availability_zones = cdef.get("availability_zones") or event.get("aws_info", {}).get("region_availability_zones") or ["us-east-1a", "us-east-1b", "us-east-1c"]
         backup_retention_period = cdef.get("backup_retention_period") or 7
         character_set_name = cdef.get("character_set_name") #We do not recommend you set this parameter
         database_name = cdef.get("database_name") or "default"
@@ -112,6 +112,7 @@ def lambda_handler(event, context):\
             pass
 
         elif event.get("op") == "upsert":
+            eh.add_op("get_subnets")
             eh.add_op("get_subnet_group")
             if not eh.state.get("engine_version"):
                 eh.add_op("get_engine_version")
@@ -121,7 +122,6 @@ def lambda_handler(event, context):\
             eh.add_op("delete_cluster")
         
         initial_attributes = remove_none_attributes({
-            "AvailabilityZones": availability_zones,
             "BackupRetentionPeriod": backup_retention_period,
             "CharacterSetName": character_set_name,
             "DatabaseName": database_name,
@@ -160,6 +160,7 @@ def lambda_handler(event, context):\
         get_subnet_group(subnet_ids)
         create_subnet_group(name)
         initial_attributes["DBSubnetGroupName"] = eh.props.get("subnet_group_name")
+        initial_attributes["AvailabilityZones"] = eh.props.get("availability_zones")
 
         # Note that updating the engine version will cause an outage.
         # Each deployment will auto-update the engine version during the downtime window
@@ -206,7 +207,8 @@ def get_subnet_group(subnet_ids):
                     eh.add_log("Found Matching Subnet Group", subnet_group)
                     eh.add_props({
                         "subnet_group_arn": subnet_group.get("DBSubnetGroupArn"),
-                        "subnet_group_name": subnet_group.get("DBSubnetGroupName")
+                        "subnet_group_name": subnet_group.get("DBSubnetGroupName"),
+                        "availability_zones": [subnet.get("SubnetAvailabilityZone").get("Name") for subnet in subnet_group.get("Subnets")]
                     })
                     return None
         
@@ -238,7 +240,8 @@ def create_subnet_group(name):
         ).get("DBSubnetGroup")
         eh.add_props({
             "subnet_group_arn": subnet_group_retval.get("DBSubnetGroupArn"),
-            "subnet_group_name": subnet_group_retval.get("DBSubnetGroupName")
+            "subnet_group_name": subnet_group_retval.get("DBSubnetGroupName"),
+            "availability_zones": [subnet.get("SubnetAvailabilityZone").get("Name") for subnet in subnet_group_retval.get("Subnets")]
         })
         eh.add_log("Created Subnet Group", subnet_group_retval)
     except ClientError as e:
