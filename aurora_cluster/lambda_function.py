@@ -235,7 +235,7 @@ def create_subnet_group(name):
                     "Value": "CloudKommand"
                 }
             ]
-        )
+        ).get("DBSubnetGroup")
         eh.add_props({
             "subnet_group_arn": subnet_group_retval.get("DBSubnetGroupArn"),
             "subnet_group_name": subnet_group_retval.get("DBSubnetGroupName")
