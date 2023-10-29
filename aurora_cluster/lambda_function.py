@@ -291,7 +291,7 @@ def get_cluster(prev_state, attributes, region):
                         eh.add_op("remove_tags", remove_tags)
 
             if attrib_value != cluster_retval.get(attrib_key):
-                if attrib_key in ["DBSubnetGroupName", "Engine"]:
+                if attrib_key in ["DBSubnetGroupName", "Engine", "MasterUsername"]:
                     eh.add_log(f"Cannot Change Subnets or Engine", {"attributes": attributes, "cluster_retval": cluster_retval})
                     eh.perm_error(f"Cannot Change Subnets or Engine", 2)
                     return None
