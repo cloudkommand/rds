@@ -37,7 +37,7 @@
                 "properties": {
                     "subnet_ids": {
                         "type": "array",
-                        "description": "The subnet IDs to create the cluster in.",
+                        "description": "The 2 or 3 subnet IDs to create the cluster in. Setting this defines the availability zones that the cluster will be created in.",
                         "items": {
                             "type": "string"
                         }
