@@ -96,7 +96,7 @@ def lambda_handler(event, context):\
         activty_directory_role_name = cdef.get("activty_directory_role_name")
 
         enable_global_write_forwarding = cdef.get("enable_global_write_forwarding", False if global_cluster_identifier else None)
-
+        force_master_password_update = cdef.get("force_master_password_update", False)
 
         storage_type = cdef.get("storage_type", "aurora")
         if storage_type not in ["aurora", "aurora-iopt1"]:
@@ -170,9 +170,10 @@ def lambda_handler(event, context):\
 
 
         # attributes = {k:str(v) for k,v in attributes.items() if not isinstance(v, dict)}
-        print(initial_attributes)
+        # print(initial_attributes)
+        
 
-        get_cluster(prev_state, initial_attributes, region)
+        get_cluster(prev_state, initial_attributes, region, force_master_password_update)
         create_cluster(initial_attributes, region)
         update_cluster(prev_state, initial_attributes, region, apply_changes_immediately)
         delete_cluster(prev_state)
@@ -268,40 +269,58 @@ def get_engine_version(engine):
         handle_common_errors(e, eh, "Get Engine Versions Failed", 0)
 
 @ext(handler=eh, op="get_cluster")
-def get_cluster(prev_state, attributes, region):
+def get_cluster(prev_state, attributes, region, force_master_password_update):
     try:
+        dhash = hashlib.md5()
+        dhash.update(json.dumps(attributes, sort_keys=True).encode())
+        eh.add_props({"attributes_hash": dhash.hexdigest()})
+
         identifier_to_find = prev_state.get("props", {}).get("name") or attributes["DBClusterIdentifier"]
         cluster_retval = rds.describe_db_clusters(
             DBClusterIdentifier=identifier_to_find
         ).get("DBClusters")[0]
 
         eh.add_log("Got Cluster", cluster_retval)
+        
+        # Check vs old hash. This auto-detects most changes
+        if prev_state.get("props", {}).get("attributes_hash") != eh.props.get("attributes_hash"):
+            eh.add_op("update_cluster")
 
-        for attrib_key, attrib_value in attributes.items():
-            if attrib_key == "Tags":
-                current_tags_dict = {tag.get("Key"): tag.get("Value") for tag in cluster_retval.get(attrib_key)}
-                desired_tags_dict = {tag.get("Key"): tag.get("Value") for tag in attrib_value}
-                if current_tags_dict != desired_tags_dict:
-                    eh.add_log("Tags Don't Match", {"current_tags": current_tags_dict, "desired_tags": desired_tags_dict})
-                    update_tags = {k:v for k,v in desired_tags_dict.items() if ((k not in current_tags_dict) or (v != current_tags_dict.get(k)))}
-                    remove_tags = [k for k in current_tags_dict if k not in desired_tags_dict]
-                    if update_tags:
-                        eh.add_op("add_tags", update_tags)
-                    if remove_tags:
-                        eh.add_op("remove_tags", remove_tags)
+        # Check whether we need to update tags
+        current_tags_dict = {tag.get("Key"): tag.get("Value") for tag in cluster_retval.get("TagList")}
+        desired_tags_dict = {tag.get("Key"): tag.get("Value") for tag in attributes.get("Tags")}
+        if current_tags_dict != desired_tags_dict:
+            eh.add_log("Tags Don't Match", {"current_tags": current_tags_dict, "desired_tags": desired_tags_dict})
+            update_tags = {k:v for k,v in desired_tags_dict.items() if ((k not in current_tags_dict) or (v != current_tags_dict.get(k)))}
+            remove_tags = [k for k in current_tags_dict if k not in desired_tags_dict]
+            if update_tags:
+                eh.add_op("add_tags", update_tags)
+            if remove_tags:
+                eh.add_op("remove_tags", remove_tags)
 
-            if attrib_value != cluster_retval.get(attrib_key):
-                if attrib_key in ["DBSubnetGroupName", "Engine", "MasterUsername"]:
-                    eh.add_log(f"Cannot Change Subnets or Engine", {"attributes": attributes, "cluster_retval": cluster_retval})
-                    eh.perm_error(f"Cannot Change Subnets or Engine", 2)
-                    return None
-                print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
-                eh.add_log("Cluster Attributes Don't Match", {"attrib_key": attrib_key, "attrib_value": attrib_value, "cluster_attrib_value": cluster_retval.get(attrib_key)})
-                eh.add_op("update_cluster")
-                return None
+        if not eh.ops.get("update_cluster"):
+            for attrib_key, attrib_value in attributes.items():
+                if attrib_key == "Tags":
+                    continue
+                
+                # This is handle
+                elif attrib_key == "MasterUserPassword":
+                    if force_master_password_update:
+                        eh.add_op("update_cluster")
 
-        eh.add_log("Cluster Attributes Match", {"attributes": attributes, "cluster_retval": cluster_retval})
-        update_props_and_links(eh, region, cluster_retval)
+                elif attrib_value != cluster_retval.get(attrib_key):
+                    if attrib_key in ["DBSubnetGroupName", "Engine", "MasterUsername"]:
+                        eh.add_log(f"Cannot Change Subnets or Engine", {"attributes": attributes, "cluster_retval": cluster_retval})
+                        eh.perm_error(f"Cannot Change Subnets or Engine", 2)
+                        return None
+                    print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
+                    eh.add_log("Cluster Attributes Don't Match", {"attrib_key": attrib_key, "attrib_value": attrib_value, "cluster_attrib_value": cluster_retval.get(attrib_key)})
+                    eh.add_op("update_cluster")
+                    continue
+
+        if not eh.ops.get("update_cluster"):
+            eh.add_log("Cluster Attributes Match", {"attributes": attributes, "cluster_retval": cluster_retval})
+            update_props_and_links(eh, region, cluster_retval)
 
     except ClientError as e:
         if e.response['Error']['Code'] in ["DBClusterNotFoundFault"]:
@@ -356,7 +375,7 @@ def update_cluster(prev_state, attributes, region, apply_immediately):
         update_props_and_links(eh, region, cluster_retval)
 
     except ClientError as e:
-        handle_common_errors(e, eh, "Update Cluster Failed", 15)
+        handle_common_errors(e, eh, "Update Cluster Failed", 15, ["InvalidDBClusterStateFault"])
     except botocore.exceptions.ParamValidationError as e:
         eh.add_log("Invalid Update Cluster Parameters", {"error": str(e), "attributes": attributes}, True)
         eh.perm_error(str(e), 15)
