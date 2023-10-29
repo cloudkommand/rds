@@ -34,7 +34,7 @@ def lambda_handler(event, context):\
         
         name = cdef.get("name") or component_safe_name(project_code, repo_id, cname, no_underscores=True, max_chars=63)
         
-        availability_zones = cdef.get("availability_zones") or event.get("aws_info", {}).get("region_availability_zones") or ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1e", "us-east-1f"]
+        availability_zones = cdef.get("availability_zones") or event.get("aws_info", {}).get("region_availability_zones") or ["us-east-1a", "us-east-1b", "us-east-1c"]
         backup_retention_period = cdef.get("backup_retention_period") or 7
         character_set_name = cdef.get("character_set_name") #We do not recommend you set this parameter
         database_name = cdef.get("database_name") or "default"
