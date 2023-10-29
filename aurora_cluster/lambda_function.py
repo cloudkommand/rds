@@ -285,6 +285,8 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
         
         # Check vs old hash. This auto-detects most changes
         if prev_state.get("props", {}).get("attributes_hash") != eh.props.get("attributes_hash"):
+            print(prev_state.get('props', {}).get('attributes_hash'))
+            print(eh.props.get('attributes_hash'))
             eh.add_op("update_cluster")
 
         # Check whether we need to update tags
@@ -334,7 +336,7 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
             eh.add_log("Cluster Attributes Match", {"attributes": attributes_to_log, "cluster_retval": cluster_retval})
             update_props_and_links(eh, region, cluster_retval)
         else:
-            eh.add_log("Cluster Attributes Don't Match", {"attributes": attributes_to_log, "cluster_retval": cluster_retval, "cluster_attrib_value": cluster_retval.get(attrib_key)})
+            eh.add_log("Cluster Attributes Don't Match", {"attributes": attributes_to_log, "cluster_retval": cluster_retval})
 
 
     except ClientError as e:
