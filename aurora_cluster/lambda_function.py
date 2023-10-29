@@ -244,6 +244,7 @@ def create_subnet_group(name):
     except ClientError as e:
         handle_common_errors(e, eh, "Create Subnet Group Failed", 0)
 
+
 @ext(handler=eh, op="get_engine_version")
 def get_engine_version(engine):
     try:
@@ -319,6 +320,9 @@ def create_cluster(attributes, region):
 
     except ClientError as e:
         handle_common_errors(e, eh, "Create Cluster Failed", 15)
+    except botocore.exceptions.ParamValidationError as e:
+        eh.add_log("Invalid Create Cluster Parameters", {"error": str(e), "attributes": attributes}, True)
+        eh.perm_error(str(e), 15)
 
 @ext(handler=eh, op="update_cluster")
 def update_cluster(prev_state, attributes, region, apply_immediately):
@@ -349,6 +353,9 @@ def update_cluster(prev_state, attributes, region, apply_immediately):
 
     except ClientError as e:
         handle_common_errors(e, eh, "Update Cluster Failed", 15)
+    except botocore.exceptions.ParamValidationError as e:
+        eh.add_log("Invalid Update Cluster Parameters", {"error": str(e), "attributes": attributes}, True)
+        eh.perm_error(str(e), 15)
 
 @ext(handler=eh, op="delete_cluster")
 def delete_cluster(prev_state):
