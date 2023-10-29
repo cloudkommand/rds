@@ -96,7 +96,7 @@ def lambda_handler(event, context):\
         activty_directory_role_name = cdef.get("activty_directory_role_name")
 
         enable_global_write_forwarding = cdef.get("enable_global_write_forwarding", False if global_cluster_identifier else None)
-        force_master_password_update = cdef.get("force_master_password_update", False)
+        force_master_password_update = cdef.get("force_update", False)
         skip_final_snapshot = cdef.get("skip_final_snapshot", False)
 
         storage_type = cdef.get("storage_type", "aurora")
@@ -309,8 +309,16 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
                     if force_master_password_update:
                         eh.add_op("update_cluster")
                     
-                elif attrib_key in ["VpcSecurityGroupIds"]:
-                    continue #Hash handles this
+                elif attrib_key in ["StorageType", "EnableCloudwatchLogsExports"]:
+                    continue #These are ignored
+
+                elif attrib_key == "VpcSecurityGroupIds":
+                    if set(attrib_value) != set(map(lambda x: x["VpcSecurityGroupId"], cluster_retval.get("VpcSecurityGroups"))):
+                        eh.add_op("update_cluster")
+                
+                elif attrib_key == "DBSubnetGroupName":
+                    if attrib_value != cluster_retval.get("DBSubnetGroup"):
+                        eh.add_op("update_cluster")
 
                 elif attrib_value != cluster_retval.get(attrib_key):
                     if attrib_key in ["DBSubnetGroupName", "Engine", "MasterUsername"]:
@@ -318,13 +326,16 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
                         eh.perm_error(f"Cannot Change Subnets or Engine", 2)
                         return None
                     print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
-                    eh.add_log("Cluster Attributes Don't Match", {"attrib_key": attrib_key, "attrib_value": attrib_value, "cluster_attrib_value": cluster_retval.get(attrib_key)})
                     eh.add_op("update_cluster")
                     continue
 
+        attributes_to_log = {k:v for k,v in attributes.items() if k not in ["VpcSecurityGroupIds", "MasterUserPassword"]}
         if not eh.ops.get("update_cluster"):
-            eh.add_log("Cluster Attributes Match", {"attributes": attributes, "cluster_retval": cluster_retval})
+            eh.add_log("Cluster Attributes Match", {"attributes": attributes_to_log, "cluster_retval": cluster_retval})
             update_props_and_links(eh, region, cluster_retval)
+        else:
+            eh.add_log("Cluster Attributes Don't Match", {"attributes": attributes_to_log, "cluster_retval": cluster_retval, "cluster_attrib_value": cluster_retval.get(attrib_key)})
+
 
     except ClientError as e:
         if e.response['Error']['Code'] in ["DBClusterNotFoundFault"]:

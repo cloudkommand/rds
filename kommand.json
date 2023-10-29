@@ -63,25 +63,40 @@
                     },
                     "master_password": {
                         "type": "string",
-                        "description": "The master password for the cluster."
+                        "description": "The master password for the cluster.",
+                        "common": true
                     },
                     "master_username": {
                         "type": "string",
                         "description": "The master username for the cluster.",
-                        "default": "administrator"
+                        "default": "administrator",
+                        "common": true
                     },
                     "manage_master_user_password": {
                         "type": "boolean",
                         "description": "Whether you want RDS to manage the master user password for you in Secrets Manager. This disables a few capabilities, and defaults to false.",
-                        "default": false
+                        "default": false,
+                        "common": true
                     },
                     "global_cluster_identifier": {
                         "type": "string",
-                        "description": "The global cluster identifier to associate this cluster with. This is only used for clusters that are part of an Aurora global database, and must be specified if you want one"
+                        "description": "The global cluster identifier to associate this cluster with. This is only used for clusters that are part of an Aurora global database, and must be specified if you want one",
+                        "common": true
                     },
                     "enable_global_write_forwarding": {
                         "type": "boolean",
                         "description": "Whether you want to enable this cluster to forward writes to the primary cluster of an Aurora global database. Defaults to false if global_cluster_identifier is specified.",
+                        "default": false,
+                        "common": true
+                    },
+                    "force_update": {
+                        "type": "boolean",
+                        "description": "Set this to true if you want the cluster to update every time. This should be necessary extremely rarely, such as if someone changed the master password from aaa to bbb and you want to change it back to aaa. Almost every time CK will detect changes, even master password changes, but it cannot see what the current master password is.",
+                        "default": false
+                    },
+                    "skip_final_snapshot": {
+                        "type": "boolean",
+                        "description": "Set to true if you don't want to store the final snapshot of the database",
                         "default": false
                     }
                 },
