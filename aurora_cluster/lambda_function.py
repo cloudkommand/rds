@@ -81,7 +81,7 @@ def lambda_handler(event, context):\
         kms_key_id = cdef.get("kms_key_id")
         pre_signed_url = cdef.get("pre_signed_url")
         enable_iam_authentication = cdef.get("enable_iam_authentication", False)
-        backtrack_window = cdef.get("backtrack_window", 0)
+        backtrack_window = cdef.get("backtrack_window", 0) if engine == "aurora-mysql" else None
         enable_cloudwatch_logs_exports = cdef.get("enable_cloudwatch_logs_exports", get_default_logs_exports(engine))
         
         engine_mode = cdef.get("engine_mode", "provisioned")
