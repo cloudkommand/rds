@@ -308,6 +308,9 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
                 elif attrib_key == "MasterUserPassword":
                     if force_master_password_update:
                         eh.add_op("update_cluster")
+                    
+                elif attrib_key in ["VpcSecurityGroupIds"]:
+                    continue #Hash handles this
 
                 elif attrib_value != cluster_retval.get(attrib_key):
                     if attrib_key in ["DBSubnetGroupName", "Engine", "MasterUsername"]:
