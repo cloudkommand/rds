@@ -266,8 +266,8 @@ def get_engine_version(engine):
 
 
         #Get the latest version of this engine
-        max_version_number = max([float(re.sub(r'[^0-9.]', '', version.get("EngineVersion"))) for version in engine_version_retval.get("DBEngineVersions")])
-        version_to_use = list([version for version in engine_version_retval.get("DBEngineVersions") if float(re.sub(r'[^0-9.]', '', version.get("EngineVersion"))) == max_version_number])[0].get("EngineVersion")
+        max_version_number = max([float(re.sub(r'[^0-9]', '', version.get("EngineVersion"))) for version in engine_version_retval.get("DBEngineVersions")])
+        version_to_use = list([version for version in engine_version_retval.get("DBEngineVersions") if float(re.sub(r'[^0-9]', '', version.get("EngineVersion"))) == max_version_number])[0].get("EngineVersion")
         eh.add_log(f"Selected Engine Version: {version_to_use}", {"All Versions": engine_version_retval, "Used Version": version_to_use})
 
         eh.add_state({
