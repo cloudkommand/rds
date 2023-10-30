@@ -458,7 +458,7 @@ def waiting_for_cluster():
             eh.add_log(f"Cluster Update Finished, Status: {desired_status}", {"cluster_retval": cluster_retval})
         else:
             eh.add_log(f"Waiting for Cluster Status: {desired_status}", {"desired_status": desired_status, "current_status": current_status})
-            eh.retry_error(str(current_epoch_time_usec_num), 60, callback_sec=10)
+            eh.retry_error(str(current_epoch_time_usec_num()), 60, callback_sec=10)
     except ClientError as e:
         if desired_status == DELETED_STATUS and e.response['Error']['Code'] in ["DBClusterNotFoundFault"]:
             eh.add_log("Cluster Deleted", {"name": cluster_id})
