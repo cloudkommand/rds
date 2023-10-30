@@ -276,7 +276,8 @@ def get_engine_version(engine):
 def get_cluster(prev_state, attributes, region, force_master_password_update):
     try:
         dhash = hashlib.md5()
-        dhash.update(json.dumps(attributes, sort_keys=True).encode())
+        hash_attributes = {k:v for k,v in attributes.items() if k not in ["Tags"]}
+        dhash.update(json.dumps(hash_attributes, sort_keys=True).encode())
         eh.add_props({"attributes_hash": dhash.hexdigest()})
 
         identifier_to_find = prev_state.get("props", {}).get("name") or attributes["DBClusterIdentifier"]
