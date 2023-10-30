@@ -303,15 +303,11 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
 
         if not eh.ops.get("update_cluster"):
             for attrib_key, attrib_value in attributes.items():
-                if attrib_key == "Tags":
-                    continue
-                
-                # This is handle
-                elif attrib_key == "MasterUserPassword":
+                if attrib_key == "MasterUserPassword":
                     if force_master_password_update:
                         eh.add_op("update_cluster")
                     
-                elif attrib_key in ["StorageType"]:
+                elif attrib_key in ["StorageType", "Tags"]:
                     continue #These are ignored
 
                 elif attrib_key == "VpcSecurityGroupIds":
@@ -422,17 +418,20 @@ def update_cluster(prev_state, attributes, region, apply_immediately):
 @ext(handler=eh, op="delete_cluster")
 def delete_cluster(prev_state, skip_final_snapshot):
     try:
-        cluster_retval = rds.delete_db_cluster(
-            DBClusterIdentifier=prev_state.get("props", {}).get("name"),
-            SkipFinalSnapshot=skip_final_snapshot
-        ).get("DBCluster")
+        params = remove_none_attributes({
+            "DBClusterIdentifier": prev_state.get("props", {}).get("name"),
+            "SkipFinalSnapshot": skip_final_snapshot,
+            "FinalDBSnapshotIdentifier": f"{prev_state.get('props', {}).get('name')}-final-snapshot" if not skip_final_snapshot else None
+        })
+
+        cluster_retval = rds.delete_db_cluster(**params).get("DBCluster")
 
         eh.add_log("Deleted Cluster", cluster_retval)
     except ClientError as e:
         if e.response['Error']['Code'] in ["DBClusterNotFoundFault"]:
             eh.add_log("Cluster Not Found, Exiting", {"name": prev_state.get("props", {}).get("name")})
         else:
-            handle_common_errors(e, eh, "Delete Cluster Failed", 15)
+            handle_common_errors(e, eh, "Delete Cluster Failed", 15, ["InvalidParameterCombination"])
 
 @ext(handler=eh, op="add_tags")
 def add_tags():
