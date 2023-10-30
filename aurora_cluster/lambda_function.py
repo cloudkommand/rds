@@ -341,7 +341,7 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
 
                 elif attrib_value != cluster_retval.get(attrib_key):
                     if isinstance(attrib_value, list):
-                        if set(attrib_value) != set(cluster_retval.get(attrib_key)):
+                        if set(attrib_value) != set(cluster_retval.get(attrib_key, [])):
                             print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
                             eh.add_op("update_cluster")
                     elif attrib_key in ["Engine", "MasterUsername"]:
