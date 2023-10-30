@@ -334,14 +334,24 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
                         print("ManageMasterUserPassword Doesn't Match")
                         eh.add_op("update_cluster")
 
+                elif attrib_key == "EnableIAMDatabaseAuthentication":
+                    if attrib_value != cluster_retval.get("IAMDatabaseAuthenticationEnabled"):
+                        print("EnableIAMDatabaseAuthentication Doesn't Match")
+                        eh.add_op("update_cluster")
+
                 elif attrib_value != cluster_retval.get(attrib_key):
-                    if attrib_key in ["Engine", "MasterUsername"]:
+                    if isinstance(attrib_value, list):
+                        if set(attrib_value) != set(cluster_retval.get(attrib_key)):
+                            print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
+                            eh.add_op("update_cluster")
+                    elif attrib_key in ["Engine", "MasterUsername"]:
                         eh.add_log(f"Cannot Change Subnets or Engine", {"attributes": attributes, "cluster_retval": cluster_retval})
                         eh.perm_error(f"Cannot Change Subnets or Engine", 2)
                         return None
-                    print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
-                    eh.add_op("update_cluster")
-                    continue
+                    else:
+                        print(f"attrib_key = {attrib_key}, attrib_value = {attrib_value}, cluster_retval.get(attrib_key) = {cluster_retval.get(attrib_key)}")
+                        eh.add_op("update_cluster")
+                        continue
 
         attributes_to_log = {k:v for k,v in attributes.items() if k not in ["VpcSecurityGroupIds", "MasterUserPassword"]}
         if not eh.ops.get("update_cluster"):
