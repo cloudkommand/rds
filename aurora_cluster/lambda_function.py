@@ -311,19 +311,31 @@ def get_cluster(prev_state, attributes, region, force_master_password_update):
                     if force_master_password_update:
                         eh.add_op("update_cluster")
                     
-                elif attrib_key in ["StorageType", "EnableCloudwatchLogsExports"]:
+                elif attrib_key in ["StorageType"]:
                     continue #These are ignored
 
                 elif attrib_key == "VpcSecurityGroupIds":
                     if set(attrib_value) != set(map(lambda x: x["VpcSecurityGroupId"], cluster_retval.get("VpcSecurityGroups"))):
+                        print("VPC Security Groups Don't Match")
                         eh.add_op("update_cluster")
                 
                 elif attrib_key == "DBSubnetGroupName":
                     if attrib_value != cluster_retval.get("DBSubnetGroup"):
+                        print("Subnet Groups Don't Match")
+                        eh.add_op("update_cluster")
+                
+                elif attrib_key == "EnableCloudwatchLogsExports":
+                    if set(attrib_value) != set(cluster_retval.get("EnabledCloudwatchLogsExports")):
+                        print("Cloudwatch Logs Exports Don't Match")
+                        eh.add_op("update_cluster")
+
+                elif attrib_key == "ManageMasterUserPassword":
+                    if bool(attrib_value) != bool(cluster_retval.get("MasterUserSecret")):
+                        print("ManageMasterUserPassword Doesn't Match")
                         eh.add_op("update_cluster")
 
                 elif attrib_value != cluster_retval.get(attrib_key):
-                    if attrib_key in ["DBSubnetGroupName", "Engine", "MasterUsername"]:
+                    if attrib_key in ["Engine", "MasterUsername"]:
                         eh.add_log(f"Cannot Change Subnets or Engine", {"attributes": attributes, "cluster_retval": cluster_retval})
                         eh.perm_error(f"Cannot Change Subnets or Engine", 2)
                         return None
