@@ -262,12 +262,13 @@ def get_engine_version(engine):
             Engine=engine
         )
         print(engine_version_retval)
-        import re
 
+        version_list = [version.get("EngineVersion") for version in engine_version_retval.get("DBEngineVersions")]
+        version_to_use = version_list[0]
+        for version in version_list:
+            version_to_use = compare_version(version_to_use, version)
 
         #Get the latest version of this engine
-        max_version_number = max([float(re.sub(r'[^0-9]', '', version.get("EngineVersion"))) for version in engine_version_retval.get("DBEngineVersions")])
-        version_to_use = list([version for version in engine_version_retval.get("DBEngineVersions") if float(re.sub(r'[^0-9]', '', version.get("EngineVersion"))) == max_version_number])[0].get("EngineVersion")
         eh.add_log(f"Selected Engine Version: {version_to_use}", {"All Versions": engine_version_retval, "Used Version": version_to_use})
 
         eh.add_state({
@@ -580,3 +581,31 @@ def get_default_database_name(engine):
 
 def format_tags(tags_dict):
     return [{"Key": k, "Value": v} for k,v in tags_dict.items()]
+
+def compare_version(version1, version2):
+    # Split the input versions into components using periods as separators
+    components1 = re.split(r'\.|[^0-9]+', version1)
+    components2 = re.split(r'\.|[^0-9]+', version2)
+
+    # Ensure both version lists have the same length by adding zeros to the shorter one
+    max_len = max(len(components1), len(components2))
+    components1 += ['0'] * (max_len - len(components1))
+    components2 += ['0'] * (max_len - len(components2))
+
+    # Compare the components one by one
+    for comp1, comp2 in zip(components1, components2):
+        # Convert the components to integers for numerical comparison
+        try:
+            comp1 = int(comp1)
+            comp2 = int(comp2)
+        except:
+            pass
+        
+        # Compare the components numerically
+        if comp1 < comp2:
+            return version2
+        elif comp1 > comp2:
+            return version1
+
+    # If all components are equal, return either version as they are the same
+    return version1
