@@ -17,6 +17,8 @@ from extutil import remove_none_attributes, account_context, ExtensionHandler, e
 
 eh = ExtensionHandler()
 
+DELETED_STATUS = "gone"
+
 rds = boto3.client("rds")
 def lambda_handler(event, context):\
     # 1. Zero
@@ -178,6 +180,7 @@ def lambda_handler(event, context):\
         create_cluster(initial_attributes, region)
         update_cluster(prev_state, initial_attributes, region, apply_changes_immediately)
         delete_cluster(prev_state, skip_final_snapshot)
+        waiting_for_cluster()
 
         add_tags()
         remove_tags()
@@ -375,6 +378,7 @@ def create_cluster(attributes, region):
         eh.add_log("Created Cluster", cluster_retval)
         
         update_props_and_links(eh, region, cluster_retval)
+        eh.add_op("waiting_for_cluster", {"cluster_id": cluster_retval.get("DBClusterIdentifier"), "desired_status": "available"})
 
     except ClientError as e:
         handle_common_errors(e, eh, "Create Cluster Failed", 15, ["InvalidParameterCombination", "InvalidParameterValue"])
@@ -408,6 +412,7 @@ def update_cluster(prev_state, attributes, region, apply_immediately):
         eh.add_log("Updated Cluster", cluster_retval)
 
         update_props_and_links(eh, region, cluster_retval)
+        eh.add_op("waiting_for_cluster", {"cluster_id": cluster_retval.get("DBClusterIdentifier"), "desired_status": "available"})
 
     except ClientError as e:
         handle_common_errors(e, eh, "Update Cluster Failed", 15, ["InvalidDBClusterStateFault"])
@@ -427,11 +432,31 @@ def delete_cluster(prev_state, skip_final_snapshot):
         cluster_retval = rds.delete_db_cluster(**params).get("DBCluster")
 
         eh.add_log("Deleted Cluster", cluster_retval)
+        eh.add_op("waiting_for_cluster", {"cluster_id": prev_state.get("props", {}).get("name"), "desired_status": DELETED_STATUS})
     except ClientError as e:
         if e.response['Error']['Code'] in ["DBClusterNotFoundFault"]:
             eh.add_log("Cluster Not Found, Exiting", {"name": prev_state.get("props", {}).get("name")})
         else:
             handle_common_errors(e, eh, "Delete Cluster Failed", 15, ["InvalidParameterCombination"])
+
+@ext(handler=eh, op="waiting_for_cluster")
+def waiting_for_cluster():
+    cluster_id = eh.ops["waiting_for_cluster"]["cluster_id"]
+    desired_status = eh.ops["waiting_for_cluster"]["desired_status"]
+    try:
+        cluster_retval = rds.describe_db_clusters(
+            DBClusterIdentifier=cluster_id
+        ).get("DBClusters")[0]
+        current_status = cluster_retval.get("Status")
+        if current_status == desired_status:
+            eh.add_log(f"Cluster Update Finished, Status: {desired_status}", {"cluster_retval": cluster_retval})
+        else:
+            eh.add_log(f"Waiting for Cluster Status: {desired_status}", {"desired_status": desired_status, "current_status": current_status})
+            eh.retry_error(str(current_epoch_time_usec_num), 60, callback_sec=10)
+    except ClientError as e:
+        if desired_status == DELETED_STATUS and e.response['Error']['Code'] in ["DBClusterNotFoundFault"]:
+            eh.add_log("Cluster Deleted", {"name": cluster_id})
+            return None
 
 @ext(handler=eh, op="add_tags")
 def add_tags():
