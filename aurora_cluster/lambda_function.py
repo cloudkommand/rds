@@ -432,7 +432,7 @@ def delete_cluster(prev_state, skip_final_snapshot):
         params = remove_none_attributes({
             "DBClusterIdentifier": prev_state.get("props", {}).get("name"),
             "SkipFinalSnapshot": skip_final_snapshot,
-            "FinalDBSnapshotIdentifier": f"{prev_state.get('props', {}).get('name')}-final-snapshot" if not skip_final_snapshot else None
+            "FinalDBSnapshotIdentifier": f"{prev_state.get('props', {}).get('name')}-snapshot-{current_epoch_time_usec_num()}" if not skip_final_snapshot else None
         })
 
         cluster_retval = rds.delete_db_cluster(**params).get("DBCluster")
