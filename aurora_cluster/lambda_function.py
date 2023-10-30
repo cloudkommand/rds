@@ -260,6 +260,7 @@ def get_engine_version(engine):
         engine_version_retval = rds.describe_db_engine_versions(
             Engine=engine
         )
+        print(engine_version_retval)
 
         #Get the latest version of this engine
         max_version_number = max([float(version.get("EngineVersion").replace(".", "")) for version in engine_version_retval.get("DBEngineVersions")])
