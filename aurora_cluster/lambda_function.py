@@ -572,7 +572,7 @@ def get_default_logs_exports(engine):
 
 def get_default_database_name(engine):
     if engine == "aurora-mysql":
-        return "mysql"
+        return "initial"
     elif engine == "aurora-postgresql":
         return "postgres"
     else:
