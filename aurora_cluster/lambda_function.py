@@ -2,6 +2,7 @@ import boto3
 import botocore
 from botocore.exceptions import ClientError
 
+import re
 import json
 import os
 import subprocess
@@ -261,10 +262,12 @@ def get_engine_version(engine):
             Engine=engine
         )
         print(engine_version_retval)
+        import re
+
 
         #Get the latest version of this engine
-        max_version_number = max([float(version.get("EngineVersion").replace(".", "")) for version in engine_version_retval.get("DBEngineVersions")])
-        version_to_use = list([version for version in engine_version_retval.get("DBEngineVersions") if float(version.get("EngineVersion").replace(".", "")) == max_version_number])[0].get("EngineVersion")
+        max_version_number = max([float(re.sub(r'[^0-9.]', '', version.get("EngineVersion"))) for version in engine_version_retval.get("DBEngineVersions")])
+        version_to_use = list([version for version in engine_version_retval.get("DBEngineVersions") if float(re.sub(r'[^0-9.]', '', version.get("EngineVersion"))) == max_version_number])[0].get("EngineVersion")
         eh.add_log("Selected Engine Version", {"All Versions": engine_version_retval, "Used Version": version_to_use})
 
         eh.add_state({
